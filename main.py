@@ -77,6 +77,8 @@ def get_chart_data():
         data = yf.Ticker(symbol)
         hist = data.history(period="1y", interval="1d")
 
+        hist = hist.dropna(subset=["Close"])
+
         if hist.empty:
             return jsonify({"error": "No data returned from Yahoo Finance."}), 404
 
