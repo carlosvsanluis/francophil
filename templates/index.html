@@ -565,7 +565,7 @@ let cacData = null, pseData = null;
 let cacChart = null, pseChart = null;
 
 async function loadIndex(ticker, priceId, changeId) {
-  const res = await fetch(`/api/chart/${ticker}`);
+  const res = await fetch(`/api/chart?ticker=${encodeURIComponent(ticker)}`);
   const data = await res.json();
   if (data.error) throw new Error(data.error);
 
@@ -722,7 +722,7 @@ async function showCompanyChart(ticker, name, exchange) {
   panel.classList.add('visible');
 
   try {
-    const res = await fetch(`/api/chart/${ticker}`);
+    const res = await fetch(`/api/chart?ticker=${encodeURIComponent(ticker)}`);
     const data = await res.json();
     if (data.error) throw new Error(data.error);
 

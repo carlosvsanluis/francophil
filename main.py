@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, request
 from flask_cors import CORS
 import yfinance as yf
 from dateutil import parser as dateparser
@@ -61,9 +61,10 @@ def index():
     return render_template("index.html")
 
 
-@app.route("/api/chart/<ticker>")
-def get_chart_data(ticker):
+@app.route("/api/chart")
+def get_chart_data():
     """Return 1-year daily closing prices for an index or company."""
+    ticker = request.args.get("ticker", "")
     index_map = {"FCHI": "^FCHI", "PSEI": "PSEI.PS"}
     if ticker.upper() in index_map:
         symbol = index_map[ticker.upper()]
