@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FrancoPhil.com &mdash; CAC 40 &amp; PSEi Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <style>
+    /* ===== RESET & BASE ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-primary:   #0d1117;
+      --bg-card:      #161b22;
+      --border:       #30363d;
+      --text-primary: #e6edf3;
+      --text-muted:   #8b949e;
+      --accent-cac:   #f7931a;
+      --accent-pse:   #00b4d8;
+      --green:        #3fb950;
+      --red:          #f85149;
+    }
+
+    body {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ===== HEADER ===== */
+    header {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .logo {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .logo .cac { color: var(--accent-cac); }
+    .logo .pse { color: var(--accent-pse); }
+
+    .header-time {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-family: 'Courier New', monospace;
+    }
+
+    /* ===== MAIN LAYOUT ===== */
+    main {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    /* ===== SECTION TITLES ===== */
+    .section-title {
+      font-size: 1.0rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid var(--border);
+    }
+
+    .section-title.cac { border-color: var(--accent-cac); color: var(--accent-cac); }
+    .section-title.pse { border-color: var(--accent-pse); color: var(--accent-pse); }
+    .section-title.news { border-color: var(--border); color: var(--text-primary); margin-top: 0.5rem; }
+
+    /* ===== CHARTS GRID ===== */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 2.5rem;
+    }
+
+    @media (max-width: 900px) {
+      .charts-grid { grid-template-columns: 1fr; }
+    }
+
+    .chart-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+    }
+
+    .chart-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1rem;
+    }
+
+    .chart-exchange-label {
+      font-size: 0.75rem;
+      font-family: monospace;
+      color: var(--text-muted);
+      background: rgba(255,255,255,0.05);
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    .chart-price {
+      font-size: 1.8rem;
+      font-weight: 700;
+      font-family: 'Courier New', monospace;
+    }
+
+    .chart-change {
+      font-size: 0.85rem;
+      font-weight: 500;
+      margin-top: 2px;
+    }
+
+    .chart-change.up   { color: var(--green); }
+    .chart-change.down { color: var(--red); }
+
+    .chart-container {
+      position: relative;
+      height: 280px;
+    }
+
+    /* ===== TIME RANGE SELECTOR ===== */
+    .range-selector {
+      display: flex;
+      gap: 0.4rem;
+      margin-bottom: 1rem;
+    }
+
+    .range-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      border-radius: 6px;
+      padding: 3px 10px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .range-btn:hover,
+    .range-btn.active {
+      background: rgba(255,255,255,0.08);
+      color: var(--text-primary);
+      border-color: rgba(255,255,255,0.2);
+    }
+
+    /* ===== NEWS SECTION ===== */
+    .news-filters {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 1.2rem;
+      flex-wrap: wrap;
+    }
+
+    .filter-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 4px 14px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .filter-btn:hover { color: var(--text-primary); }
+    .filter-btn.active-all { background: rgba(255,255,255,0.1); color: var(--text-primary); border-color: rgba(255,255,255,0.3); }
+    .filter-btn.active-cac { background: rgba(247,147,26,0.15); color: var(--accent-cac); border-color: var(--accent-cac); }
+    .filter-btn.active-pse { background: rgba(0,180,216,0.15); color: var(--accent-pse); border-color: var(--accent-pse); }
+
+    .news-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 1rem;
+    }
+
+    .news-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.1rem 1.2rem;
+      text-decoration: none;
+      color: var(--text-primary);
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .news-card:hover {
+      background: rgba(255,255,255,0.03);
+      border-color: rgba(255,255,255,0.2);
+    }
+
+    .news-card[data-exchange="CAC 40"] { border-left: 3px solid var(--accent-cac); }
+    .news-card[data-exchange="PSEi"]   { border-left: 3px solid var(--accent-pse); }
+
+    .news-title {
+      font-size: 0.9rem;
+      font-weight: 500;
+      line-height: 1.4;
+    }
+
+    .news-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.3rem;
+    }
+
+    .news-publisher {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+
+    .news-badge {
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 2px 7px;
+      border-radius: 4px;
+    }
+
+    .badge-cac { background: rgba(247,147,26,0.15); color: var(--accent-cac); }
+    .badge-pse { background: rgba(0,180,216,0.15); color: var(--accent-pse); }
+
+    .news-date {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-family: monospace;
+    }
+
+    /* ===== LOADING / ERROR STATES ===== */
+    .loading {
+      text-align: center;
+      color: var(--text-muted);
+      padding: 3rem;
+      font-size: 0.9rem;
+      grid-column: 1 / -1;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 18px; height: 18px;
+      border: 2px solid var(--border);
+      border-top-color: var(--text-primary);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ===== COMPANY LIST ===== */
+    .company-section {
+      margin-top: 1rem;
+    }
+
+    .company-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    .company-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .company-btn:hover {
+      color: var(--text-primary);
+      border-color: rgba(255,255,255,0.2);
+    }
+
+    .company-btn.active-cac {
+      background: rgba(247,147,26,0.15);
+      color: var(--accent-cac);
+      border-color: var(--accent-cac);
+    }
+
+    .company-btn.active-pse {
+      background: rgba(0,180,216,0.15);
+      color: var(--accent-pse);
+      border-color: var(--accent-pse);
+    }
+
+    .company-chart-panel {
+      margin-top: 1rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      display: none;
+    }
+
+    .company-chart-panel.visible { display: block; }
+
+    .company-chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1rem;
+    }
+
+    .company-chart-name {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .company-chart-ticker {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-family: monospace;
+    }
+
+    .company-chart-price {
+      font-size: 1.4rem;
+      font-weight: 700;
+      font-family: 'Courier New', monospace;
+    }
+
+    .company-chart-change {
+      font-size: 0.8rem;
+      font-weight: 500;
+      margin-top: 2px;
+    }
+
+    .company-chart-change.up   { color: var(--green); }
+    .company-chart-change.down { color: var(--red); }
+
+    .close-company-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-muted);
+      padding: 4px 10px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .close-company-btn:hover {
+      color: var(--text-primary);
+      border-color: rgba(255,255,255,0.2);
+    }
+
+    .company-canvas-container {
+      position: relative;
+      height: 240px;
+    }
+
+    /* ===== FOOTER ===== */
+    footer {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      padding: 2rem;
+      border-top: 1px solid var(--border);
+      margin-top: 2rem;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Franco<span class="cac">Phil</span><span class="pse">.com</span></div>
+  <div class="header-time" id="clock"></div>
+</header>
+
+<main>
+
+  <!-- CHARTS -->
+  <div class="charts-grid">
+
+    <div class="chart-card">
+      <div class="section-title cac">CAC 40 &mdash; ^FCHI</div>
+      <div class="chart-meta">
+        <div>
+          <div class="chart-price" id="cac-price">--</div>
+          <div class="chart-change" id="cac-change">Loading&hellip;</div>
+        </div>
+        <div class="chart-exchange-label">Paris Stock Exchange</div>
+      </div>
+      <div class="range-selector" id="cac-ranges">
+        <button class="range-btn" data-index="FCHI" data-days="30">1M</button>
+        <button class="range-btn active" data-index="FCHI" data-days="90">3M</button>
+        <button class="range-btn" data-index="FCHI" data-days="180">6M</button>
+        <button class="range-btn" data-index="FCHI" data-days="365">1Y</button>
+      </div>
+      <div class="chart-container">
+        <canvas id="cacChart"></canvas>
+      </div>
+      <div class="company-section">
+        <div class="company-list" id="cac-companies"></div>
+        <div class="company-chart-panel" id="cac-company-panel">
+          <div class="company-chart-header">
+            <div>
+              <div class="company-chart-name" id="cac-company-name"></div>
+              <div class="company-chart-ticker" id="cac-company-ticker"></div>
+              <div class="company-chart-price" id="cac-company-price">--</div>
+              <div class="company-chart-change" id="cac-company-change"></div>
+            </div>
+            <button class="close-company-btn" data-panel="cac">Close</button>
+          </div>
+          <div class="company-canvas-container">
+            <canvas id="cacCompanyChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="section-title pse">PSEi &mdash; PSEI.PS</div>
+      <div class="chart-meta">
+        <div>
+          <div class="chart-price" id="pse-price">--</div>
+          <div class="chart-change" id="pse-change">Loading&hellip;</div>
+        </div>
+        <div class="chart-exchange-label">Philippine Stock Exchange</div>
+      </div>
+      <div class="range-selector" id="pse-ranges">
+        <button class="range-btn" data-index="PSEI" data-days="30">1M</button>
+        <button class="range-btn active" data-index="PSEI" data-days="90">3M</button>
+        <button class="range-btn" data-index="PSEI" data-days="180">6M</button>
+        <button class="range-btn" data-index="PSEI" data-days="365">1Y</button>
+      </div>
+      <div class="chart-container">
+        <canvas id="pseChart"></canvas>
+      </div>
+      <div class="company-section">
+        <div class="company-list" id="pse-companies"></div>
+        <div class="company-chart-panel" id="pse-company-panel">
+          <div class="company-chart-header">
+            <div>
+              <div class="company-chart-name" id="pse-company-name"></div>
+              <div class="company-chart-ticker" id="pse-company-ticker"></div>
+              <div class="company-chart-price" id="pse-company-price">--</div>
+              <div class="company-chart-change" id="pse-company-change"></div>
+            </div>
+            <button class="close-company-btn" data-panel="pse">Close</button>
+          </div>
+          <div class="company-canvas-container">
+            <canvas id="pseCompanyChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- NEWS -->
+  <div class="section-title news">Market News</div>
+  <div class="news-filters">
+    <button class="filter-btn active-all" data-filter="all">All News</button>
+    <button class="filter-btn" data-filter="CAC 40">CAC 40 Only</button>
+    <button class="filter-btn" data-filter="PSEi">PSEi Only</button>
+  </div>
+  <div id="news-container" class="news-grid">
+    <div class="loading"><span class="spinner"></span>Loading market news&hellip;</div>
+  </div>
+
+</main>
+
+<footer>
+  FrancoPhil.com &mdash; Data provided by Yahoo Finance &mdash;
+  For informational purposes only. Not financial advice.
+</footer>
+
+<script>
+// ===== CLOCK =====
+function updateClock() {
+  document.getElementById('clock').textContent = new Date().toUTCString().replace('GMT', 'UTC');
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ===== HELPERS =====
+function fmt(n) {
+  return new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+}
+
+function sliceByDays(labels, prices, days) {
+  const start = Math.max(0, labels.length - days);
+  return { labels: labels.slice(start), prices: prices.slice(start) };
+}
+
+// ===== CHART FACTORY =====
+function buildChart(canvasId, labels, prices, accentRgb) {
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  const gradient = ctx.createLinearGradient(0, 0, 0, 280);
+  gradient.addColorStop(0, `rgba(${accentRgb}, 0.3)`);
+  gradient.addColorStop(1, `rgba(${accentRgb}, 0.0)`);
+
+  return new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data: prices,
+        borderColor: `rgb(${accentRgb})`,
+        borderWidth: 2,
+        backgroundColor: gradient,
+        fill: true,
+        tension: 0.3,
+        pointRadius: 0,
+        pointHoverRadius: 5,
+        pointHoverBackgroundColor: `rgb(${accentRgb})`,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1c2128',
+          borderColor: '#30363d',
+          borderWidth: 1,
+          titleColor: '#8b949e',
+          bodyColor: '#e6edf3',
+          callbacks: { label: (c) => ' ' + fmt(c.parsed.y) }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: { color: '#8b949e', maxTicksLimit: 8, font: { size: 11, family: 'monospace' } }
+        },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: { color: '#8b949e', font: { size: 11, family: 'monospace' }, callback: (v) => fmt(v) }
+        }
+      }
+    }
+  });
+}
+
+// ===== CHART LOADING =====
+let cacData = null, pseData = null;
+let cacChart = null, pseChart = null;
+
+async function loadIndex(ticker, priceId, changeId) {
+  const res = await fetch(`/api/chart/${ticker}`);
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+
+  const last   = data.prices[data.prices.length - 1];
+  const prev   = data.prices[data.prices.length - 2];
+  const change = last - prev;
+  const pct    = (change / prev) * 100;
+
+  document.getElementById(priceId).textContent = fmt(last);
+  const el = document.getElementById(changeId);
+  el.textContent = `${change >= 0 ? '+' : ''}${fmt(change)} (${pct.toFixed(2)}%)`;
+  el.className = 'chart-change ' + (change >= 0 ? 'up' : 'down');
+
+  return data;
+}
+
+async function initCharts() {
+  try {
+    [cacData, pseData] = await Promise.all([
+      loadIndex('FCHI', 'cac-price', 'cac-change'),
+      loadIndex('PSEI', 'pse-price', 'pse-change'),
+    ]);
+
+    const cac90 = sliceByDays(cacData.labels, cacData.prices, 90);
+    const pse90 = sliceByDays(pseData.labels, pseData.prices, 90);
+
+    cacChart = buildChart('cacChart', cac90.labels, cac90.prices, '247,147,26');
+    pseChart = buildChart('pseChart', pse90.labels, pse90.prices, '0,180,216');
+  } catch (e) {
+    console.error('Chart error:', e);
+  }
+}
+
+// ===== RANGE BUTTONS =====
+function updateChart(chart, fullData, days) {
+  const s = sliceByDays(fullData.labels, fullData.prices, days);
+  chart.data.labels = s.labels;
+  chart.data.datasets[0].data = s.prices;
+  chart.update();
+}
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.range-btn');
+  if (!btn) return;
+
+  const ticker = btn.dataset.index;
+  const days   = parseInt(btn.dataset.days, 10);
+  const groupId = ticker === 'FCHI' ? 'cac-ranges' : 'pse-ranges';
+
+  document.querySelectorAll(`#${groupId} .range-btn`).forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  if (ticker === 'FCHI' && cacChart && cacData) updateChart(cacChart, cacData, days);
+  if (ticker === 'PSEI' && pseChart && pseData) updateChart(pseChart, pseData, days);
+});
+
+// ===== NEWS =====
+let allNews = [];
+let activeFilter = 'all';
+
+async function loadNews() {
+  try {
+    const res  = await fetch('/api/news');
+    const data = await res.json();
+    allNews = data.news || [];
+    renderNews();
+  } catch {
+    document.getElementById('news-container').innerHTML =
+      '<div class="loading">Failed to load news. Please refresh.</div>';
+  }
+}
+
+function renderNews() {
+  const container = document.getElementById('news-container');
+  const items = activeFilter === 'all'
+    ? allNews
+    : allNews.filter(n => n.exchange === activeFilter);
+
+  if (items.length === 0) {
+    container.innerHTML = '<div class="loading">No news available for this filter.</div>';
+    return;
+  }
+
+  container.innerHTML = items.map(item => `
+    <a class="news-card" href="${item.link}" target="_blank" rel="noopener noreferrer"
+       data-exchange="${item.exchange}">
+      <div class="news-title">${item.title}</div>
+      <div class="news-meta">
+        <span class="news-publisher">${item.publisher}</span>
+        <span class="news-badge ${item.exchange === 'CAC 40' ? 'badge-cac' : 'badge-pse'}">
+          ${item.exchange}
+        </span>
+      </div>
+      <div class="news-date">${item.published}</div>
+    </a>
+  `).join('');
+}
+
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.className = 'filter-btn');
+    activeFilter = btn.dataset.filter;
+    if      (activeFilter === 'all')    btn.classList.add('active-all');
+    else if (activeFilter === 'CAC 40') btn.classList.add('active-cac');
+    else                                btn.classList.add('active-pse');
+    renderNews();
+  });
+});
+
+// ===== COMPANY CHARTS =====
+let cacCompanyChart = null;
+let pseCompanyChart = null;
+
+async function loadCompanies() {
+  try {
+    const res = await fetch('/api/companies');
+    const data = await res.json();
+
+    const cacContainer = document.getElementById('cac-companies');
+    const pseContainer = document.getElementById('pse-companies');
+
+    Object.entries(data.cac40).forEach(([ticker, name]) => {
+      const btn = document.createElement('button');
+      btn.className = 'company-btn';
+      btn.textContent = name;
+      btn.dataset.ticker = ticker;
+      btn.dataset.exchange = 'cac';
+      cacContainer.appendChild(btn);
+    });
+
+    Object.entries(data.psei).forEach(([ticker, name]) => {
+      const btn = document.createElement('button');
+      btn.className = 'company-btn';
+      btn.textContent = name;
+      btn.dataset.ticker = ticker;
+      btn.dataset.exchange = 'pse';
+      pseContainer.appendChild(btn);
+    });
+  } catch (e) {
+    console.error('Failed to load companies:', e);
+  }
+}
+
+async function showCompanyChart(ticker, name, exchange) {
+  const prefix = exchange === 'cac' ? 'cac' : 'pse';
+  const accentRgb = exchange === 'cac' ? '247,147,26' : '0,180,216';
+  const panel = document.getElementById(`${prefix}-company-panel`);
+  const canvasId = `${prefix}CompanyChart`;
+
+  document.getElementById(`${prefix}-company-name`).textContent = name;
+  document.getElementById(`${prefix}-company-ticker`).textContent = ticker;
+  document.getElementById(`${prefix}-company-price`).textContent = 'Loading...';
+  document.getElementById(`${prefix}-company-change`).textContent = '';
+  panel.classList.add('visible');
+
+  try {
+    const res = await fetch(`/api/chart/${ticker}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    const last = data.prices[data.prices.length - 1];
+    const prev = data.prices[data.prices.length - 2];
+    const change = last - prev;
+    const pct = (change / prev) * 100;
+
+    document.getElementById(`${prefix}-company-price`).textContent = fmt(last);
+    const changeEl = document.getElementById(`${prefix}-company-change`);
+    changeEl.textContent = `${change >= 0 ? '+' : ''}${fmt(change)} (${pct.toFixed(2)}%)`;
+    changeEl.className = 'company-chart-change ' + (change >= 0 ? 'up' : 'down');
+
+    const sliced = sliceByDays(data.labels, data.prices, 90);
+
+    // Destroy previous chart if it exists
+    if (prefix === 'cac' && cacCompanyChart) { cacCompanyChart.destroy(); cacCompanyChart = null; }
+    if (prefix === 'pse' && pseCompanyChart) { pseCompanyChart.destroy(); pseCompanyChart = null; }
+
+    const chart = buildChart(canvasId, sliced.labels, sliced.prices, accentRgb);
+    if (prefix === 'cac') cacCompanyChart = chart;
+    else pseCompanyChart = chart;
+  } catch (e) {
+    document.getElementById(`${prefix}-company-price`).textContent = 'Error';
+    document.getElementById(`${prefix}-company-change`).textContent = e.message;
+    console.error('Company chart error:', e);
+  }
+}
+
+// Company button clicks
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.company-btn');
+  if (!btn) return;
+
+  const exchange = btn.dataset.exchange;
+  const ticker = btn.dataset.ticker;
+  const name = btn.textContent;
+  const activeClass = exchange === 'cac' ? 'active-cac' : 'active-pse';
+  const containerId = exchange === 'cac' ? 'cac-companies' : 'pse-companies';
+
+  document.querySelectorAll(`#${containerId} .company-btn`).forEach(b => {
+    b.classList.remove('active-cac', 'active-pse');
+  });
+  btn.classList.add(activeClass);
+
+  showCompanyChart(ticker, name, exchange);
+});
+
+// Close company chart
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.close-company-btn');
+  if (!btn) return;
+
+  const prefix = btn.dataset.panel;
+  const panel = document.getElementById(`${prefix}-company-panel`);
+  panel.classList.remove('visible');
+
+  const containerId = prefix === 'cac' ? 'cac-companies' : 'pse-companies';
+  document.querySelectorAll(`#${containerId} .company-btn`).forEach(b => {
+    b.classList.remove('active-cac', 'active-pse');
+  });
+
+  if (prefix === 'cac' && cacCompanyChart) { cacCompanyChart.destroy(); cacCompanyChart = null; }
+  if (prefix === 'pse' && pseCompanyChart) { pseCompanyChart.destroy(); pseCompanyChart = null; }
+});
+
+// ===== BOOT =====
+initCharts();
+loadCompanies();
+loadNews();
+</script>
+</body>
+</html>
